@@ -1,0 +1,22 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "islet",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-06-01",
+  "observability": { "enabled": true },
+  "durable_objects": {
+    "bindings": [{ "name": "DEVICES", "class_name": "Device" }]
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Device"] }],
+  "vars": {
+    // The iOS app's bundle identifier (Live Activity pushes go to "<topic>.push-type.liveactivity").
+    "APNS_TOPIC": "org.mutable.islet",
+    // From developer.apple.com → Keys (a key with Apple Push Notifications service enabled).
+    "APNS_KEY_ID": "7NCP6755R4",
+    "APNS_TEAM_ID": "G3V66M4637"
+  }
+  // Secrets (set with `npx wrangler secret put NAME`):
+  //   ISLET_API_KEY      shared secret the app sends as a bearer token
+  //   APNS_PRIVATE_KEY   contents of the AuthKey_XXXXXXXXXX.p8 file
+  //   CREDENTIALS_KEY    base64 32-byte key encrypting stored Dexcom credentials (openssl rand -base64 32)
+}

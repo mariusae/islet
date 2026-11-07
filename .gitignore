@@ -1,0 +1,10 @@
+.DS_Store
+build/
+xcuserdata/
+*.xcuserstate
+Packages/IsletKit/.build/
+Packages/IsletKit/.swiftpm/
+server/node_modules/
+server/.wrangler/
+server/.dev.vars
+Config/Local.xcconfig

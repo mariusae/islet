@@ -1,0 +1,10 @@
+// Build settings for the Islet app target.
+//
+// Personal defaults for the push server live in Config/Local.xcconfig, which git ignores.
+// Copy Config/Local.xcconfig.example to get started. Anything set there is built into the
+// app's Info.plist and used to prefill Settings → Push server.
+
+ISLET_SERVER_HOST =
+ISLET_API_KEY =
+
+#include? "Local.xcconfig"

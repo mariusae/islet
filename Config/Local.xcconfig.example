@@ -1,0 +1,7 @@
+// Copy to Config/Local.xcconfig (git-ignored) and fill in.
+//
+// Host only, without "https://" (xcconfig treats "//" as the start of a comment).
+// `npx wrangler deploy` prints the URL.
+ISLET_SERVER_HOST = islet.your-subdomain.workers.dev
+// The value you set with `npx wrangler secret put ISLET_API_KEY`.
+ISLET_API_KEY =

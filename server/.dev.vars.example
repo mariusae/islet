@@ -1,0 +1,5 @@
+ISLET_API_KEY=change-me
+CREDENTIALS_KEY=REPLACE_WITH_openssl_rand_base64_32
+APNS_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----
+...
+-----END PRIVATE KEY-----"
