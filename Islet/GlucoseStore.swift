@@ -166,6 +166,7 @@ final class GlucoseStore {
         guard isServerManaged else { return }
         await server.refreshStatus()
         if server.status?.registered == false { await connectServer() }
+        await server.reconcileActivity()
     }
 
     /// Fetch only what's new when we already have recent history, then merge and trim to 24 hours.
