@@ -14,6 +14,8 @@ struct GlucoseLiveActivity: Widget {
     var body: some WidgetConfiguration {
         ActivityConfiguration(for: GlucoseActivityAttributes.self) { context in
             LiveActivityView(state: context.state, isStale: context.isStale)
+                // The Lock Screen card keeps its dark tint in either appearance, so use the dark palette.
+                .environment(\.colorScheme, .dark)
                 .activityBackgroundTint(Color(red: 0.04, green: 0.045, blue: 0.06).opacity(0.92))
                 .activitySystemActionForegroundColor(.white)
         } dynamicIsland: { context in

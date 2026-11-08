@@ -51,7 +51,7 @@ struct LoginView: View {
             Text("Islet")
                 .font(.system(size: 56, weight: .bold, design: .rounded))
                 .foregroundStyle(
-                    LinearGradient(colors: [.white, Palette.inRange.opacity(0.85)], startPoint: .top, endPoint: .bottom))
+                    LinearGradient(colors: [Color.primary, Palette.inRange.opacity(0.85)], startPoint: .top, endPoint: .bottom))
             Text("Your glucose, at a glance —\nand front and center when it matters.")
                 .font(.system(.callout, design: .rounded))
                 .multilineTextAlignment(.center)
@@ -72,7 +72,7 @@ struct LoginView: View {
                         .focused($focus, equals: .username)
                         .onSubmit { focus = .password }
                 }
-                Divider().overlay(.white.opacity(0.06)).padding(.leading, 48)
+                Divider().overlay(Theme.hairline).padding(.leading, 48)
                 field(icon: "lock.fill") {
                     SecureField("Password", text: $password)
                         .textContentType(.password)
@@ -81,8 +81,8 @@ struct LoginView: View {
                         .onSubmit(signIn)
                 }
             }
-            .background(RoundedRectangle(cornerRadius: 18, style: .continuous).fill(.white.opacity(0.06)))
-            .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).strokeBorder(.white.opacity(0.08)))
+            .background(RoundedRectangle(cornerRadius: 18, style: .continuous).fill(Theme.field))
+            .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).strokeBorder(Theme.fieldStroke))
 
             Picker("Region", selection: $region) {
                 ForEach(DexcomRegion.allCases) { Text($0.shortName).tag($0) }
@@ -100,7 +100,7 @@ struct LoginView: View {
             Button(action: signIn) {
                 ZStack {
                     if isSigningIn {
-                        ProgressView().tint(.black)
+                        ProgressView().tint(Theme.onAccent)
                     } else {
                         Text("Sign In")
                     }
@@ -111,7 +111,7 @@ struct LoginView: View {
                 .background(
                     LinearGradient(colors: [Palette.inRange, Palette.accent], startPoint: .leading, endPoint: .trailing),
                     in: Capsule())
-                .foregroundStyle(.black)
+                .foregroundStyle(Theme.onAccent)
                 .opacity(canSubmit ? 1 : 0.45)
             }
             .buttonStyle(.plain)
@@ -170,5 +170,4 @@ struct LoginView: View {
 #Preview {
     LoginView()
         .environment(GlucoseStore.shared)
-        .preferredColorScheme(.dark)
 }

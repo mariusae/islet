@@ -8,7 +8,7 @@ struct DashboardView: View {
 
     private var levelColor: Color {
         guard let latest = store.latest, Date.now.timeIntervalSince(latest.date) <= AlertEngine.staleAfter else {
-            return Color.white.opacity(0.4)
+            return Theme.stale
         }
         return Palette.color(for: store.settings.level(latest.value))
     }
@@ -17,6 +17,16 @@ struct DashboardView: View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: 16) {
+                    if store.mode == .demo {
+                        Text("DEMO DATA")
+                            .font(.system(size: 10, weight: .heavy, design: .rounded))
+                            .tracking(0.8)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 3)
+                            .background(Palette.accent.opacity(0.18), in: Capsule())
+                            .foregroundStyle(Palette.accent)
+                    }
+
                     HeroView(readings: store.readings, settings: store.settings, alerts: store.alerts)
                         .padding(.top, 8)
                         .padding(.bottom, 12)
@@ -36,22 +46,6 @@ struct DashboardView: View {
             .background(Backdrop(color: levelColor))
             .refreshable { await store.refresh() }
             .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    HStack(spacing: 6) {
-                        Text("Islet")
-                            .font(.system(.title3, design: .rounded).weight(.bold))
-                        if store.mode == .demo {
-                            Text("DEMO")
-                                .font(.system(size: 10, weight: .heavy, design: .rounded))
-                                .tracking(0.8)
-                                .padding(.horizontal, 6)
-                                .padding(.vertical, 2)
-                                .background(Palette.accent.opacity(0.2), in: Capsule())
-                                .foregroundStyle(Palette.accent)
-                        }
-                    }
-                    .fixedSize()
-                }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button {
                         showSettings = true
@@ -93,6 +87,8 @@ struct HeroView: View {
     let settings: IsletSettings
     let alerts: [AlertKind]
 
+    @Environment(\.colorScheme) private var colorScheme
+
     var body: some View {
         TimelineView(.periodic(from: .now, by: 15)) { context in
             if let latest = readings.last {
@@ -112,7 +108,7 @@ struct HeroView: View {
     @ViewBuilder
     private func content(latest: GlucoseReading, now: Date) -> some View {
         let stale = now.timeIntervalSince(latest.date) > AlertEngine.staleAfter
-        let color = stale ? Color.white.opacity(0.45) : Palette.color(for: settings.level(latest.value))
+        let color = stale ? Theme.stale : Palette.color(for: settings.level(latest.value))
         let unit = settings.unit
 
         VStack(spacing: 4) {
@@ -124,7 +120,7 @@ struct HeroView: View {
                         .foregroundStyle(.secondary)
                         .padding(.horizontal, 8)
                         .padding(.vertical, 3)
-                        .background(.white.opacity(0.08), in: Capsule())
+                        .background(Theme.fill, in: Capsule())
                 } else {
                     ForEach(alerts, id: \.self) { AlertBadge(alert: $0) }
                 }
@@ -142,7 +138,7 @@ struct HeroView: View {
                     .opacity(stale ? 0.3 : 1)
             }
             .foregroundStyle(color)
-            .shadow(color: color.opacity(0.35), radius: 24)
+            .shadow(color: color.opacity(colorScheme == .dark ? 0.35 : 0.18), radius: 24)
 
             HStack(spacing: 8) {
                 Text(unit.label)
@@ -184,6 +180,7 @@ struct HeroView: View {
 struct RangePicker: View {
     @Binding var selection: ChartRange
     @Namespace private var namespace
+    @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
         HStack(spacing: 2) {
@@ -198,7 +195,8 @@ struct RangePicker: View {
                         .background {
                             if selection == range {
                                 Capsule()
-                                    .fill(.white.opacity(0.14))
+                                    .fill(Theme.selection)
+                                    .shadow(color: .black.opacity(colorScheme == .dark ? 0 : 0.08), radius: 2, y: 1)
                                     .matchedGeometryEffect(id: "selection", in: namespace)
                             }
                         }
@@ -208,7 +206,7 @@ struct RangePicker: View {
             }
         }
         .padding(2)
-        .background(.white.opacity(0.05), in: Capsule())
+        .background(Theme.fill, in: Capsule())
         .sensoryFeedback(.selection, trigger: selection)
     }
 }
@@ -245,7 +243,7 @@ struct StatsCard: View {
                     legend("High", stats.above, Palette.high)
                 }
 
-                Divider().overlay(.white.opacity(0.06))
+                Divider().overlay(Theme.hairline)
 
                 HStack(spacing: 0) {
                     metric("Average", settings.unit.formatValue(stats.mean), settings.unit.label)
@@ -315,10 +313,13 @@ struct RangeBar: View {
 struct Backdrop: View {
     let color: Color
 
+    @Environment(\.colorScheme) private var colorScheme
+
     var body: some View {
+        let strength = colorScheme == .dark ? 1.0 : 0.75
         ZStack {
-            Color(red: 0.035, green: 0.04, blue: 0.055)
-            RadialGradient(colors: [color.opacity(0.22), color.opacity(0.05), .clear],
+            Theme.background
+            RadialGradient(colors: [color.opacity(0.22 * strength), color.opacity(0.05 * strength), .clear],
                            center: .init(x: 0.5, y: 0.0), startRadius: 10, endRadius: 520)
         }
         .ignoresSafeArea()
@@ -342,13 +343,12 @@ struct ErrorBanner: View {
 extension View {
     func card() -> some View {
         padding(16)
-            .background(RoundedRectangle(cornerRadius: 24, style: .continuous).fill(Color.white.opacity(0.045)))
-            .overlay(RoundedRectangle(cornerRadius: 24, style: .continuous).strokeBorder(Color.white.opacity(0.07), lineWidth: 1))
+            .background(RoundedRectangle(cornerRadius: 24, style: .continuous).fill(Theme.card))
+            .overlay(RoundedRectangle(cornerRadius: 24, style: .continuous).strokeBorder(Theme.cardStroke, lineWidth: 1))
     }
 }
 
 #Preview {
     DashboardView()
         .environment(GlucoseStore.shared)
-        .preferredColorScheme(.dark)
 }

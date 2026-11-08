@@ -88,21 +88,21 @@ struct GlucoseChart: View {
         .chartXAxis {
             AxisMarks(values: .stride(by: .hour, count: range.axisStrideHours)) { _ in
                 AxisGridLine(stroke: StrokeStyle(lineWidth: 0.5))
-                    .foregroundStyle(Color.white.opacity(0.07))
+                    .foregroundStyle(Theme.grid)
                 AxisValueLabel(format: .dateTime.hour(), centered: false)
                     .font(.caption2.weight(.medium))
-                    .foregroundStyle(Color.white.opacity(0.4))
+                    .foregroundStyle(Theme.axisLabel)
             }
         }
         .chartYAxis {
             AxisMarks(position: .trailing, values: gridValues) { value in
                 AxisGridLine(stroke: StrokeStyle(lineWidth: 0.5))
-                    .foregroundStyle(Color.white.opacity(0.05))
+                    .foregroundStyle(Theme.grid)
                 AxisValueLabel {
                     if let v = value.as(Double.self) {
                         Text(unit == .mgdL ? "\(Int(v))" : "\(Int(v))")
                             .font(.caption2.weight(.medium))
-                            .foregroundStyle(Color.white.opacity(0.4))
+                            .foregroundStyle(Theme.axisLabel)
                     }
                 }
             }
@@ -180,6 +180,7 @@ struct GlucoseTrace: View {
     let selection: Selection?
 
     @State private var pulse = false
+    @Environment(\.colorScheme) private var colorScheme
 
     private var gradient: LinearGradient {
         LinearGradient(stops: stops, startPoint: .bottom, endPoint: .top)
@@ -201,7 +202,7 @@ struct GlucoseTrace: View {
                     let path = Self.smoothPath(segments[i].map(\.location))
                     path.stroke(gradient, style: StrokeStyle(lineWidth: 6, lineCap: .round, lineJoin: .round))
                         .blur(radius: 6)
-                        .opacity(0.55)
+                        .opacity(colorScheme == .dark ? 0.55 : 0.3)
                     path.stroke(gradient, style: StrokeStyle(lineWidth: 2.5, lineCap: .round, lineJoin: .round))
                 }
 
@@ -224,21 +225,21 @@ struct GlucoseTrace: View {
                     Circle()
                         .fill(latestColor)
                         .frame(width: 10, height: 10)
-                        .overlay(Circle().strokeBorder(.black.opacity(0.6), lineWidth: 2))
+                        .overlay(Circle().strokeBorder(Theme.background.opacity(0.7), lineWidth: 2))
                         .shadow(color: latestColor.opacity(0.8), radius: 6)
                         .position(last.location)
                 }
 
                 if let selection {
                     Rectangle()
-                        .fill(LinearGradient(colors: [.white.opacity(0.0), .white.opacity(0.35)],
+                        .fill(LinearGradient(colors: [Color.primary.opacity(0.0), Color.primary.opacity(0.3)],
                                              startPoint: .top, endPoint: .bottom))
                         .frame(width: 1, height: geo.size.height)
                         .position(x: selection.location.x, y: geo.size.height / 2)
                     Circle()
                         .fill(selection.color)
                         .frame(width: 11, height: 11)
-                        .overlay(Circle().strokeBorder(.white, lineWidth: 2))
+                        .overlay(Circle().strokeBorder(Theme.field, lineWidth: 2))
                         .position(selection.location)
                     callout(selection)
                         .fixedSize()
@@ -269,7 +270,7 @@ struct GlucoseTrace: View {
         .padding(.horizontal, 10)
         .padding(.vertical, 5)
         .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous).strokeBorder(.white.opacity(0.1)))
+        .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous).strokeBorder(Theme.cardStroke))
         .offset(y: 22)
     }
 

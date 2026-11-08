@@ -55,9 +55,9 @@ struct LiveActivityCard: View {
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 11)
                     .background(
-                        activity.isRunning ? AnyShapeStyle(.white.opacity(0.08)) : AnyShapeStyle(Palette.accent.opacity(0.9)),
+                        activity.isRunning ? AnyShapeStyle(Theme.fill) : AnyShapeStyle(Palette.accent.opacity(0.9)),
                         in: Capsule())
-                    .foregroundStyle(activity.isRunning ? Color.primary : Color.black)
+                    .foregroundStyle(activity.isRunning ? Color.primary : Theme.onAccent)
             }
             .buttonStyle(.plain)
             .disabled(store.readings.isEmpty)
@@ -112,7 +112,7 @@ struct FlowRow: View {
                 .foregroundStyle(.secondary)
                 .padding(.horizontal, 9)
                 .padding(.vertical, 5)
-                .background(.white.opacity(0.06), in: Capsule())
+                .background(Theme.fill, in: Capsule())
             }
         }
     }

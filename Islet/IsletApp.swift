@@ -10,7 +10,6 @@ struct IsletApp: App {
         WindowGroup {
             RootView()
                 .environment(store)
-                .preferredColorScheme(.dark)
         }
         .onChange(of: scenePhase) { _, phase in
             switch phase {
@@ -31,6 +30,7 @@ struct IsletApp: App {
 
 struct RootView: View {
     @Environment(GlucoseStore.self) private var store
+    @AppStorage(AppAppearance.storageKey) private var appearance: AppAppearance = .system
 
     var body: some View {
         ZStack {
@@ -43,5 +43,8 @@ struct RootView: View {
             }
         }
         .animation(.smooth(duration: 0.4), value: store.mode)
+        // Set on the window rather than with preferredColorScheme, which leaves open sheets in the
+        // old appearance when switching back to System.
+        .onChange(of: appearance, initial: true) { _, value in value.apply() }
     }
 }

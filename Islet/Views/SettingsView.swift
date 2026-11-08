@@ -5,6 +5,7 @@ struct SettingsView: View {
     @Environment(GlucoseStore.self) private var store
     @Environment(\.dismiss) private var dismiss
     @State private var confirmSignOut = false
+    @AppStorage(AppAppearance.storageKey) private var appearance: AppAppearance = .system
 
     var body: some View {
         @Bindable var store = store
@@ -14,12 +15,12 @@ struct SettingsView: View {
         NavigationStack {
             Form {
                 Section {
+                    Picker("Appearance", selection: $appearance) {
+                        ForEach(AppAppearance.allCases) { Text($0.label).tag($0) }
+                    }
                     Picker("Units", selection: $store.settings.unit) {
                         ForEach(GlucoseUnit.allCases) { Text($0.label).tag($0) }
                     }
-                    .pickerStyle(.segmented)
-                    .listRowBackground(Color.clear)
-                    .listRowInsets(EdgeInsets())
 
                     ValueStepper(title: "Target low", color: Palette.low, value: $store.settings.targetLow,
                                  range: 60...120, step: step, unit: unit)
@@ -98,7 +99,7 @@ struct SettingsView: View {
                 }
             }
             .scrollContentBackground(.hidden)
-            .background(Color(red: 0.05, green: 0.055, blue: 0.07))
+            .background(Theme.groupedBackground)
             .navigationTitle("Settings")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

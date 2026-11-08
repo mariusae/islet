@@ -1,146 +1,168 @@
-// Renders the Islet app icon and its dark/tinted variants.
+// Generates the Islet app icon as an Icon Composer document (Islet/AppIcon.icon).
 //
-//   swift scripts/make-icon.swift Islet/Assets.xcassets/AppIcon.appiconset
+//   swift scripts/make-icon.swift Islet/AppIcon.icon
+//
+// The document has SVG layers plus an icon.json that gives light and dark appearances their own
+// background and artwork. The system derives the tinted and clear variants, and Liquid Glass
+// supplies the depth and highlights. Open the result in Icon Composer to preview or tweak it.
 //
 // The trace is an analytic curve (a baseline plus Gaussian bumps), so it has no kinks, and the
 // peak's radius of curvature stays well above half the stroke width so the stroke's inner edge
 // never folds over itself.
 
-import AppKit
-import CoreGraphics
-import CoreImage
+import Foundation
 
-let S: CGFloat = 1024
-let cs = CGColorSpace(name: CGColorSpace.sRGB)!
-
-func c(_ r: CGFloat, _ g: CGFloat, _ b: CGFloat, _ a: CGFloat = 1) -> CGColor {
-    CGColor(srgbRed: r, green: g, blue: b, alpha: a)
-}
-
-let green = (r: 0.18, g: 0.83, b: 0.63)
-let amber = (r: 1.00, g: 0.70, b: 0.14)
+let S = 1024.0
 
 // Target band, in unit coordinates (y up).
-let bandLow: CGFloat = 0.37, bandHigh: CGFloat = 0.59
+let bandLow = 0.37, bandHigh = 0.59
 
 // Glucose trace: gentle dip, one broad meal peak above the band, settling back into range.
-func trace(_ x: CGFloat) -> CGFloat {
-    func bump(_ center: CGFloat, _ width: CGFloat, _ height: CGFloat) -> CGFloat {
+func trace(_ x: Double) -> Double {
+    func bump(_ center: Double, _ width: Double, _ height: Double) -> Double {
         height * exp(-pow((x - center) / width, 2))
     }
     return 0.445 + bump(0.48, 0.135, 0.24) - bump(0.25, 0.10, 0.04)
 }
-let xStart: CGFloat = 0.15, xEnd: CGFloat = 0.80
-
-func tracePath() -> CGPath {
-    let path = CGMutablePath()
-    let steps = 400
-    for i in 0...steps {
-        let x = xStart + (xEnd - xStart) * CGFloat(i) / CGFloat(steps)
-        let p = CGPoint(x: x * S, y: trace(x) * S)
-        i == 0 ? path.move(to: p) : path.addLine(to: p)
-    }
-    return path
-}
-
+let xStart = 0.15, xEnd = 0.80
 let lineWidth = S * 0.046
-let end = CGPoint(x: xEnd * S, y: trace(xEnd) * S)
 
-func makeContext() -> CGContext {
-    CGContext(data: nil, width: Int(S), height: Int(S), bitsPerComponent: 8, bytesPerRow: 0, space: cs,
-              bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)!
+/// Unit coordinates (y up) to SVG user space (y down).
+func px(_ x: Double) -> String { String(format: "%.2f", x * S) }
+func py(_ y: Double) -> String { String(format: "%.2f", (1 - y) * S) }
+
+struct RGB {
+    var r, g, b: Double
+    var hex: String { String(format: "#%02X%02X%02X", Int(r * 255 + 0.5), Int(g * 255 + 0.5), Int(b * 255 + 0.5)) }
+    func json(alpha: Double = 1) -> String { String(format: "srgb:%.5f,%.5f,%.5f,%.5f", r, g, b, alpha) }
 }
 
-/// The line and "now" dot alone, on transparent: colored by range, or white for the tinted variant.
-func foreground(mono: Bool) -> CGImage {
-    let ctx = makeContext()
-    ctx.setLineCap(.round)
-    ctx.setLineJoin(.round)
-    ctx.setLineWidth(lineWidth)
-    ctx.addPath(tracePath())
-    ctx.replacePathWithStrokedPath()
-    ctx.saveGState()
-    ctx.clip()
-    if mono {
-        ctx.setFillColor(c(1, 1, 1))
-        ctx.fill(CGRect(x: 0, y: 0, width: S, height: S))
-    } else {
-        // Green inside the band, amber above it, with a short blend at the boundary (as in the app).
-        let gradient = CGGradient(colorsSpace: cs, colors: [
-            c(green.r, green.g, green.b), c(green.r, green.g, green.b),
-            c(amber.r, amber.g, amber.b), c(amber.r, amber.g, amber.b),
-        ] as CFArray, locations: [0, bandHigh - 0.01, bandHigh + 0.04, 1])!
-        ctx.drawLinearGradient(gradient, start: .zero, end: CGPoint(x: 0, y: S), options: [])
+struct Look {
+    var name: String
+    var green: RGB
+    var amber: RGB
+    var bandOpacity: Double
+    var background: (top: RGB, bottom: RGB)
+}
+
+// Light is the default; the range colors are deepened so they hold up on the pale background.
+let light = Look(name: "light",
+                 green: RGB(r: 0.02, g: 0.62, b: 0.45), amber: RGB(r: 0.95, g: 0.56, b: 0.04),
+                 bandOpacity: 0.13,
+                 background: (RGB(r: 0.985, g: 0.995, b: 0.99), RGB(r: 0.86, g: 0.95, b: 0.92)))
+// Dark matches the app's dark palette.
+let dark = Look(name: "dark",
+                green: RGB(r: 0.18, g: 0.83, b: 0.63), amber: RGB(r: 1.00, g: 0.70, b: 0.14),
+                bandOpacity: 0.12,
+                background: (RGB(r: 0.03, g: 0.11, b: 0.12), RGB(r: 0.02, g: 0.04, b: 0.07)))
+
+func svg(_ body: String) -> String {
+    """
+    <svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+    \(body)
+    </svg>
+
+    """
+}
+
+func band(_ look: Look) -> String {
+    svg("""
+      <rect x="0" y="\(py(bandHigh))" width="1024" height="\(String(format: "%.2f", (bandHigh - bandLow) * S))" \
+    fill="\(look.green.hex)" fill-opacity="\(look.bandOpacity)"/>
+    """)
+}
+
+func traceSVG(_ look: Look) -> String {
+    let steps = 240
+    let points = (0...steps).map { i -> String in
+        let x = xStart + (xEnd - xStart) * Double(i) / Double(steps)
+        return "\(px(x)),\(py(trace(x)))"
     }
-    ctx.restoreGState()
-
-    // "Now" dot: a solid disc that swallows the line's end cap, with a light core.
-    let outer = S * 0.050, inner = S * 0.021
-    ctx.setFillColor(mono ? c(1, 1, 1) : c(green.r, green.g, green.b))
-    ctx.fillEllipse(in: CGRect(x: end.x - outer, y: end.y - outer, width: outer * 2, height: outer * 2))
-    if mono {
-        ctx.setBlendMode(.clear)
-    }
-    ctx.setFillColor(c(0.93, 1, 0.97))
-    ctx.fillEllipse(in: CGRect(x: end.x - inner, y: end.y - inner, width: inner * 2, height: inner * 2))
-    return ctx.makeImage()!
+    // Green inside the band, amber above it, with a short blend at the boundary (as in the app).
+    // The "now" dot is part of the same layer, a solid disc that swallows the line's end cap, so the
+    // glass treats line and dot as one shape.
+    return svg("""
+      <defs>
+        <linearGradient id="range" gradientUnits="userSpaceOnUse" x1="0" y1="1024" x2="0" y2="0">
+          <stop offset="0" stop-color="\(look.green.hex)"/>
+          <stop offset="\(bandHigh - 0.01)" stop-color="\(look.green.hex)"/>
+          <stop offset="\(bandHigh + 0.04)" stop-color="\(look.amber.hex)"/>
+          <stop offset="1" stop-color="\(look.amber.hex)"/>
+        </linearGradient>
+      </defs>
+      <polyline points="\(points.joined(separator: " "))" fill="none" stroke="url(#range)" \
+    stroke-width="\(String(format: "%.2f", lineWidth))" stroke-linecap="round" stroke-linejoin="round"/>
+      <circle cx="\(px(xEnd))" cy="\(py(trace(xEnd)))" r="\(String(format: "%.2f", S * 0.050))" fill="\(look.green.hex)"/>
+    """)
 }
 
-/// A soft, color-matched glow made by blurring the foreground itself.
-func glow(of image: CGImage, radius: CGFloat) -> CGImage {
-    let input = CIImage(cgImage: image)
-    let blurred = input.clampedToExtent().applyingGaussianBlur(sigma: radius).cropped(to: input.extent)
-    return CIContext(options: [.workingColorSpace: cs]).createCGImage(blurred, from: input.extent)!
+/// The dot's light core, on its own layer so it sits above the glass.
+let core = svg("""
+  <circle cx="\(px(xEnd))" cy="\(py(trace(xEnd)))" r="\(String(format: "%.2f", S * 0.021))" fill="#EDFFF7"/>
+""")
+
+let dir = URL(fileURLWithPath: CommandLine.arguments.count > 1 ? CommandLine.arguments[1] : "AppIcon.icon")
+let assets = dir.appending(path: "Assets")
+try? FileManager.default.removeItem(at: dir)
+try! FileManager.default.createDirectory(at: assets, withIntermediateDirectories: true)
+
+func write(_ text: String, _ name: String, in folder: URL) {
+    try! text.write(to: folder.appending(path: name), atomically: true, encoding: .utf8)
 }
 
-func drawBand(_ ctx: CGContext, alpha: CGFloat, mono: Bool = false) {
-    let color = mono ? c(1, 1, 1, alpha) : c(green.r, green.g, green.b, alpha)
-    ctx.setFillColor(color)
-    ctx.fill(CGRect(x: 0, y: bandLow * S, width: S, height: (bandHigh - bandLow) * S))
+for look in [light, dark] {
+    write(band(look), "band-\(look.name).svg", in: assets)
+    write(traceSVG(look), "trace-\(look.name).svg", in: assets)
+}
+write(core, "core.svg", in: assets)
+
+/// A layer whose artwork differs between light (default) and dark appearance.
+func layer(_ name: String, glass: Bool) -> [String: Any] {
+    [
+        "name": name,
+        "image-name": "\(name)-light.svg",
+        "image-name-specializations": [
+            ["value": "\(name)-light.svg"],
+            ["appearance": "dark", "value": "\(name)-dark.svg"],
+        ],
+        "glass": glass,
+    ]
 }
 
-func compose(background: Bool, mono: Bool) -> CGImage {
-    let ctx = makeContext()
-    let full = CGRect(x: 0, y: 0, width: S, height: S)
-    if background {
-        let bg = CGGradient(colorsSpace: cs, colors: [c(0.025, 0.04, 0.07), c(0.02, 0.12, 0.13)] as CFArray,
-                            locations: [0, 1])!
-        ctx.drawLinearGradient(bg, start: CGPoint(x: 0, y: S), end: CGPoint(x: S, y: 0), options: [])
-        let halo = CGGradient(colorsSpace: cs, colors: [c(green.r, green.g, green.b, 0.22), c(green.r, green.g, green.b, 0)] as CFArray,
-                              locations: [0, 1])!
-        ctx.drawRadialGradient(halo, startCenter: end, startRadius: 0, endCenter: end, endRadius: S * 0.6, options: [])
-    }
-    drawBand(ctx, alpha: mono ? 0.16 : 0.11, mono: mono)
-
-    let fg = foreground(mono: mono)
-    if !mono {
-        ctx.setAlpha(0.85)
-        ctx.draw(glow(of: fg, radius: S * 0.028), in: full)
-        ctx.setAlpha(0.5)
-        ctx.draw(glow(of: fg, radius: S * 0.07), in: full)
-        ctx.setAlpha(1)
-    }
-    ctx.draw(fg, in: full)
-    return ctx.makeImage()!
+func gradient(_ look: Look) -> [String: Any] {
+    ["linear-gradient": [look.background.top.json(), look.background.bottom.json()]]
 }
 
-func write(_ image: CGImage, _ name: String, to dir: URL, opaque: Bool) {
-    var image = image
-    if opaque {
-        // App Store icons must not have an alpha channel.
-        let ctx = CGContext(data: nil, width: image.width, height: image.height, bitsPerComponent: 8, bytesPerRow: 0,
-                            space: cs, bitmapInfo: CGImageAlphaInfo.noneSkipLast.rawValue)!
-        ctx.draw(image, in: CGRect(x: 0, y: 0, width: image.width, height: image.height))
-        image = ctx.makeImage()!
-    }
-    let data = NSBitmapImageRep(cgImage: image).representation(using: .png, properties: [:])!
-    try! data.write(to: dir.appending(path: name))
-}
+// Layers are listed top first.
+let icon: [String: Any] = [
+    "fill-specializations": [
+        ["value": gradient(light)],
+        ["appearance": "dark", "value": gradient(dark)],
+    ],
+    "groups": [
+        [
+            "name": "Trace",
+            "layers": [
+                ["name": "core", "image-name": "core.svg", "glass": false],
+                layer("trace", glass: true),
+            ],
+            "shadow": ["kind": "layer-color", "opacity": 0.5],
+            "translucency": ["enabled": false, "value": 0.5],
+            "specular": true,
+        ],
+        [
+            "name": "Band",
+            "layers": [layer("band", glass: false)],
+            "shadow": ["kind": "none", "opacity": 0.5],
+            "translucency": ["enabled": false, "value": 0.5],
+        ],
+    ],
+    "supported-platforms": [
+        "squares": "shared",
+        "circles": ["watchOS"],
+    ],
+]
 
-let dir = URL(fileURLWithPath: CommandLine.arguments.count > 1 ? CommandLine.arguments[1] : ".")
-// Light (default): full artwork on the dark teal background.
-write(compose(background: true, mono: false), "AppIcon.png", to: dir, opaque: true)
-// Dark: same artwork on transparent; the system supplies the dark backdrop.
-write(compose(background: false, mono: false), "AppIcon-Dark.png", to: dir, opaque: false)
-// Tinted: white-on-transparent luminance mask the system colors with the user's tint.
-write(compose(background: false, mono: true), "AppIcon-Tinted.png", to: dir, opaque: false)
+let json = try! JSONSerialization.data(withJSONObject: icon, options: [.prettyPrinted, .sortedKeys])
+try! json.write(to: dir.appending(path: "icon.json"))
+print("Wrote \(dir.path)")

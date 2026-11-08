@@ -1,12 +1,39 @@
 import SwiftUI
 
+#if canImport(UIKit)
+import UIKit
+#elseif canImport(AppKit)
+import AppKit
+#endif
+
+extension Color {
+    /// A color that resolves to `light` or `dark` with the environment's color scheme.
+    public static func adaptive(light: Color, dark: Color) -> Color {
+        #if canImport(UIKit) && !os(watchOS)
+        Color(uiColor: UIColor { $0.userInterfaceStyle == .dark ? UIColor(dark) : UIColor(light) })
+        #elseif canImport(AppKit)
+        Color(nsColor: NSColor(name: nil) { $0.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua ? NSColor(dark) : NSColor(light) })
+        #else
+        dark
+        #endif
+    }
+}
+
+/// Range colors. Dark appearance uses bright, glowing tones; light appearance deepens them so they
+/// keep their contrast on white.
 public enum Palette {
-    public static let urgentLow = Color(red: 1.00, green: 0.23, blue: 0.36)
-    public static let low = Color(red: 1.00, green: 0.42, blue: 0.42)
-    public static let inRange = Color(red: 0.18, green: 0.83, blue: 0.63)
-    public static let high = Color(red: 1.00, green: 0.70, blue: 0.14)
-    public static let veryHigh = Color(red: 1.00, green: 0.54, blue: 0.24)
-    public static let accent = Color(red: 0.36, green: 0.78, blue: 0.98)
+    public static let urgentLow = Color.adaptive(light: Color(red: 0.85, green: 0.09, blue: 0.24),
+                                                 dark: Color(red: 1.00, green: 0.23, blue: 0.36))
+    public static let low = Color.adaptive(light: Color(red: 0.90, green: 0.25, blue: 0.27),
+                                           dark: Color(red: 1.00, green: 0.42, blue: 0.42))
+    public static let inRange = Color.adaptive(light: Color(red: 0.04, green: 0.62, blue: 0.45),
+                                               dark: Color(red: 0.18, green: 0.83, blue: 0.63))
+    public static let high = Color.adaptive(light: Color(red: 0.87, green: 0.51, blue: 0.00),
+                                            dark: Color(red: 1.00, green: 0.70, blue: 0.14))
+    public static let veryHigh = Color.adaptive(light: Color(red: 0.88, green: 0.36, blue: 0.06),
+                                                dark: Color(red: 1.00, green: 0.54, blue: 0.24))
+    public static let accent = Color.adaptive(light: Color(red: 0.00, green: 0.48, blue: 0.80),
+                                              dark: Color(red: 0.36, green: 0.78, blue: 0.98))
 
     public static func color(for level: GlucoseLevel) -> Color {
         switch level {
