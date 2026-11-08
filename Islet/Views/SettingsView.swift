@@ -93,9 +93,17 @@ struct SettingsView: View {
                 }
 
                 Section {
-                    Text("Islet uses Dexcom Share, an unofficial and undocumented API that can change without notice. Readings may be delayed or missing. Islet is not a medical device and isn't affiliated with Dexcom; always confirm with your CGM before making treatment decisions.")
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
+                    NavigationLink {
+                        DisclaimerDetailView()
+                    } label: {
+                        Label {
+                            Text("Not a Medical Device")
+                        } icon: {
+                            Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(Palette.urgentLow)
+                        }
+                    }
+                } footer: {
+                    Text("Don't treat based on Islet, and don't rely on its alerts. Keep the Dexcom app and its alarms on.")
                 }
             }
             .scrollContentBackground(.hidden)
